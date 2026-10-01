@@ -1,37 +1,32 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { HumanMessage, type BaseMessage } from "@langchain/core/messages";
+import { createAgent } from "langchain";
+import { contextSchema } from "./context";
 import { getTemperatureTool } from "./get_temperature_tool";
+import { getUserCityTool } from "./get_user_city_tool";
 
 const llm = new ChatGoogleGenerativeAI({
   model: "gemini-3.8-flash",
   temperature: 0.9,
 });
 
-const llmWithTools = llm.bindTools([getTemperatureTool]);
+const agent = createAgent({
+  model: llm,
+  tools: [getUserCityTool, getTemperatureTool],
+  contextSchema,
+});
+
+const question = "Qual a temperatura atual? Faça um comentário engraçado sobre.";
+const userId = "user-1"; // or "user-2"
 
 async function main() {
-  const messages: BaseMessage[] = [
-    new HumanMessage("What's the temperature in Itajai? Make a funny comment about it."),
-  ];
+  console.log(`=== ${userId}: "${question}" ===`);
 
-  let response = await llmWithTools.invoke(messages);
-  messages.push(response);
+  const result = await agent.invoke(
+    { messages: [{ role: "user", content: question }] },
+    { context: { userId } },
+  );
 
-  while (response.tool_calls?.length) {
-    for (const call of response.tool_calls) {
-      console.log(`[tool] ${call.name}(${JSON.stringify(call.args)})`);
-
-      const toolMessage = await getTemperatureTool.invoke(call);
-      console.log(`[tool result] ${toolMessage.content}`);
-
-      messages.push(toolMessage);
-    }
-
-    response = await llmWithTools.invoke(messages);
-    messages.push(response);
-  }
-
-  console.log(response.content);
+  console.log(result.messages.at(-1)?.content);
 }
 
 main();
