@@ -6,6 +6,8 @@ export const getTemperatureTool = tool(
   async ({ city }) => {
     const weather = await getTemperature(city);
 
+    console.log(`[tool] get_temperature -> city=${city}, temperature=${weather.temperature}`);
+
     return JSON.stringify(weather);
   },
   {
